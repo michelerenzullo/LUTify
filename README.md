@@ -1,5 +1,6 @@
 # LUTify
-> A very complete and simple script to resize or convert your HALD images to CUBE format and viceversa.
+
+A very complete and simple script to resize or convert your HALD images to CUBE format and viceversa.
 
 **Do you like this project? Support it by donating**
 
@@ -9,8 +10,9 @@
 ## FEATURES:
 
 * Auto-detect input format
-* Auto-resize not perfect square LUT size(for example #33, #17...)
-* Change size and shape of your LUT
+* Auto-resize not perfect square LUT size(example #33, #17...)
+* Change size and shape of your LUT (example Spark AR LUTs to Lens Studio 1x16 LUTs)
+* Generate identity HALD
 * Read all types of HALD  
 Square:  
 ![square](https://i.ibb.co/JcWC5Fc/Identity-HALD-square.png)  
@@ -27,7 +29,7 @@ Classic:
 * Scikit-image only if you need to resize
 
 ```Shell 
-$ pip3 install numpy scikit-image pillow
+$ pip install numpy scikit-image pillow
 ```
 
 ## USAGE:
