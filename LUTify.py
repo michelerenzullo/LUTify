@@ -72,7 +72,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    o_array = np.array(Image.open(args.input,'r').convert('RGB'), dtype=np.uint8)
    size = int((o_array.shape[0]*o_array.shape[1])**(1/6)+.5)
    lutSize = size**2
-   if o_array[size-1,0,1] < o_array[size,0,1]:   
+   if o_array[size-1,0,1] <= o_array[size,0,1]:   
     guess_format = "square"
     o_array = square_unwrap(o_array,size)
    else:
