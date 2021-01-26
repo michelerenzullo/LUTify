@@ -84,8 +84,8 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
     o_array = square_unwrap(o_array,size)  
    if is_flipped:
     args.flip = (True,False)[args.flip]
-    if o_array.shape != (size**2,size**2,size**2,3):
-     o_array = o_array.reshape(size**2,size**2,size**2,3)
+    if o_array.shape != (lutSize,lutSize,lutSize,3):
+     o_array = o_array.reshape(lutSize,lutSize,lutSize,3)
     o_array = np.fliplr(o_array)
     
      
