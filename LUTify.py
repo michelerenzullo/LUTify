@@ -10,6 +10,7 @@ parser.add_argument("--identity", "-id", help="optional: generate an identity HA
 parser.add_argument("--size", "-s", help="optional: override default output size", type=int)
 parser.add_argument("--quality", "-q", help="optional: quality for resize from 0 to 5", choices = range(0,6), type = int, default = 3)
 parser.add_argument("--rows", "-r", help="optional: number of rows for square format", type = int, default = 0)
+parser.add_argument("--flip", "-ud", help="optional: flip upside down RGB values", action="store_true")
 
 args = parser.parse_args()
 
@@ -23,15 +24,18 @@ def array_resize(array, size, new_size):
   array = array.reshape(size,size,size,3)  
  return resize(array,(new_size,new_size,new_size,3),order=args.quality)
 
-def wrapper(standard, array, size):   
+def wrapper(standard, array, size):
+ if args.flip:
+  array = np.fliplr(array)
  if standard == "classic":
   return array.reshape(size**3, size**3, 3)
  else:
   rows = size
   if 0 < args.rows < size and size%args.rows==0:
    rows = args.rows
+  array = array.reshape((rows,int(size**2/rows+.5),size**2,size**2, 3))
   return np.concatenate([
-   np.concatenate(array.reshape((rows,int(size**2/rows+.5),size**2,size**2, 3))[row], axis=1) for row in range(rows)
+   np.concatenate(array[row], axis=1) for row in range(rows)
   ])
 
 def identity(size):
@@ -72,12 +76,18 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    o_array = np.array(Image.open(args.input,'r').convert('RGB'), dtype=np.uint8)
    size = int((o_array.shape[0]*o_array.shape[1])**(1/6)+.5)
    lutSize = size**2
-   if o_array[size-1,0,1] <= o_array[size,0,1]:   
-    guess_format = "square"
-    o_array = square_unwrap(o_array,size)
-   else:
+   is_flipped = (0,1)[int(o_array[0,0,1] > o_array[size-1,0,1])]
+   if o_array[0,0,1] < o_array[size-1,0,1] > o_array[size,0,1] or o_array[0,0,1] > o_array[size-1,0,1] < o_array[size,0,1]:   
     guess_format = "classic"
-   print("HALD type:",guess_format)
+   else:
+    guess_format = "square"
+    o_array = square_unwrap(o_array,size)  
+   if is_flipped:
+    args.flip = (True,False)[args.flip]
+    if o_array.shape != (size**2,size**2,size**2,3):
+     o_array = o_array.reshape(size**2,size**2,size**2,3)
+    o_array = np.fliplr(o_array)
+    
      
   if args.output.lower().endswith(".cube"):   
    if args.size:
@@ -102,7 +112,9 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    if args.size or to_resize:
     if args.size and 1 < args.size != size:                          
      size = args.size
-    o_array = array_resize(o_array,lutSize,size**2)
+     o_array = array_resize(o_array,lutSize,size**2)
+    elif to_resize:
+     o_array = array_resize(o_array,lutSize,size**2)
     
    if o_array.dtype == "float64":
     o_array = (o_array*255+.5).astype(np.uint8)
