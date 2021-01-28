@@ -76,7 +76,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    if o_array[0,0,1] > o_array[size-1,0,1]:
     args.flip = (True,False)[args.flip]
     o_array = np.flipud(o_array)
-   if o_array[0,0,1] < o_array[size-1,0,1] > o_array[size,0,1] or o_array[0,0,1] > o_array[size-1,0,1] < o_array[size,0,1]:   
+   if o_array[0,0,1] < o_array[size-1,0,1] > o_array[size,0,1]:   
     guess_format = "classic"
    else:
     guess_format = "square"
