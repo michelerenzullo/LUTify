@@ -25,18 +25,15 @@ def array_resize(array, size, new_size):
  return resize(array,(new_size,new_size,new_size,3),order=args.quality)
 
 def wrapper(standard, array, size):
- if args.flip:
-  array = np.fliplr(array)
  if standard == "classic":
-  return array.reshape(size**3, size**3, 3)
+  array = array.reshape(size**3, size**3, 3)
  else:
   rows = size
   if 0 < args.rows < size and size%args.rows==0:
    rows = args.rows
   array = array.reshape((rows,int(size**2/rows+.5),size**2,size**2, 3))
-  return np.concatenate([
-   np.concatenate(array[row], axis=1) for row in range(rows)
-  ])
+  array = np.concatenate([np.concatenate(array[row], axis=1) for row in range(rows)])
+ return (array,np.flipud(array))[args.flip]
 
 def identity(size):
  return np.mgrid[ 0 : 255 : size**2*1j, 0 : 255 : size**2*1j, 0 : 255 : size**2*1j ].astype(np.uint8).transpose() #transpose because bgr->rgb
@@ -76,18 +73,15 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    o_array = np.array(Image.open(args.input,'r').convert('RGB'), dtype=np.uint8)
    size = int((o_array.shape[0]*o_array.shape[1])**(1/6)+.5)
    lutSize = size**2
-   is_flipped = (0,1)[int(o_array[0,0,1] > o_array[size-1,0,1])]
+   if o_array[0,0,1] > o_array[size-1,0,1]:
+    args.flip = (True,False)[args.flip]
+    o_array = np.flipud(o_array)
    if o_array[0,0,1] < o_array[size-1,0,1] > o_array[size,0,1] or o_array[0,0,1] > o_array[size-1,0,1] < o_array[size,0,1]:   
     guess_format = "classic"
    else:
     guess_format = "square"
     o_array = square_unwrap(o_array,size)  
-   if is_flipped:
-    args.flip = (True,False)[args.flip]
-    if o_array.shape != (lutSize,lutSize,lutSize,3):
-     o_array = o_array.reshape(lutSize,lutSize,lutSize,3)
-    o_array = np.fliplr(o_array)
-    
+   
      
   if args.output.lower().endswith(".cube"):   
    if args.size:
