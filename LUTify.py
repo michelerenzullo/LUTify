@@ -63,8 +63,8 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
   if args.input.lower().endswith(".cube"):
    file = open(args.input,'r').read()
    o_array = np.array(re.findall("\d+\.\d\d+",file),dtype=float)
-   lutSize = int(re.search("_SIZE\s(\d+)",file).group(1))
-   input_title = re.search("TITLE\s[\"'](.*?)[\"']",file)
+   lutSize = int(re.search("_SIZE.*?(\d+)",file).group(1))
+   input_title = re.search("TITLE.?[\"'](.*?)[\"']",file)
    del file
    if input_title:
     title = input_title.group(1)
