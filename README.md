@@ -60,6 +60,8 @@ $ LUTify.py -i "SparkAR_HALD.png" -o "LensStudio_HALD.png" -s 4 -r 1 -f square -
 ```
 
 ## TODO LIST:
+- add support for .xmp by Adobe COMING SOON!!
+- avoid scikit-image, and write manually spline interpolation function
 - add support for .3dl
-- add support for .xmp by Adobe
-- web-version and cpp  
+- cpp (SOON)
+- possible web-version
