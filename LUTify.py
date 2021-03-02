@@ -62,7 +62,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
   title = re.search("[^\\\/]+(?=\.[\w]+$)",args.input)[0]
   if args.input.lower().endswith(".cube"):
    file = open(args.input,'r').read()
-   o_array = np.array([i.lower().replace(',', '').split() for i in re.findall("\n[+-]?[0-9]*[.]?[0-9]+\\s[+-]?[0-9]*[.]?[0-9]+\\s[+-]?[0-9]*[.]?[0-9]+",file)],dtype=float)
+   o_array = np.array([i.lower().replace(',', '').split() for i in re.findall("\n[+-]?[0-9]*[.]?[0-9]+\\s[+-]?[0-9]*[.]?[0-9]+\\s[+-]?[0-9]*[.]?[0-9]+",file)],dtype=float).reshape(-1)
    lutSize = int(re.search("_SIZE.*?(\d+)",file).group(1))
    input_title = re.search("TITLE.?[\"'](.*?)[\"']",file)
    del file
