@@ -112,7 +112,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
     
    if o_array.dtype == "float64":
     o_array = (o_array*255+.5).astype(np.uint8)
-   o_filename = re.search("[^\/]+$",args.output)[0]
+   o_filename = re.search("[^\/|\\\]+$",args.output)[0]
    Image.fromarray(wrapper(standard,o_array,size)).save(args.output[:-len(o_filename)] + standard + "_" + o_filename, quality=100)
    
  except FileNotFoundError:
