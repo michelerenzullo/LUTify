@@ -1,6 +1,6 @@
 # LUTify
 
-A very complete and simple script to resize or convert your HALD images to CUBE format and viceversa.
+A very complete and simple script to resize or convert your CLUT images to CUBE format and viceversa.
 
 **Do you like this project? Support it by donating**
 
@@ -13,24 +13,24 @@ A very complete and simple script to resize or convert your HALD images to CUBE 
 * Auto-resize not perfect square LUT size(example #33, #17...)
 * Flip RGB values 
 * Change size and shape of your LUT (example Spark AR LUTs to Lens Studio 1x16 LUTs)
-* Generate identity HALD
-* Read all types of HALD  
+* Generate identity CLUT
+* Read all types of CLUT 
+* Two type of interpolation: Tetrahedral or Nearest  
 Square:  
 ![square](https://i.ibb.co/JcWC5Fc/Identity-HALD-square.png)  
 Square one-row:  
 ![one-row](https://i.ibb.co/w7xVt25/Identity-HALD-square.png)  
-Classic:  
-![classic](https://i.ibb.co/QHPGtHG/Identity-HALD-classic.png)  
+Hald:  
+![hald](https://i.ibb.co/QHPGtHG/Identity-HALD-classic.png)  
 
 
 ## REQUIREMENTS:
 * Python 3
 * Numpy
 * Pillow
-* Scikit-image only if you need to resize
 
 ```Shell 
-$ pip install numpy scikit-image pillow
+$ pip install numpy pillow
 ```
 
 ## USAGE:
@@ -38,30 +38,23 @@ $ pip install numpy scikit-image pillow
 ```Shell
 $ LUTify.py -h
 usage: LUTify.py [-h] [--input INPUT] [--output OUTPUT]
-                      [--format {classic,square}] [--identity] [--size SIZE]
-                      [--quality {0,1,2,3,4,5}] [--rows ROWS] [--flip]
+                      [--format {hald,square}] [--identity] [--size SIZE]
+                      [--method {nearest,tetrahedral}] [--rows ROWS] [--flip]
 ...
 ```
 * `-i INPUT`/`-o OUTPUT` supports .CUBE, .PNG, .JPG, .TIFF 
-* `-id IDENTITY` generate an HALD identity
-* `-f FORMAT` "classic" or "square", override default output:
-    - if output is CUBE or "identity", default format is "classic"
-    - if input is CUBE and output is image the default format is "classic"
+* `-id IDENTITY` generate a CLUT identity
+* `-f FORMAT` "hald" or "square", override default output:
+    - if output is CUBE or "identity", default format is "hald"
+    - if input is CUBE and output is image the default format is "hald"
 	- if input is image and output is image default format will be automatically determinated as the opposite of the input format.
-* `-s SIZE` choose your HALD size or LUT size overriding input value.
-* `-q QUALITY` the order of spline interpolation when resizing from 0 to 5
-* `-r ROWS` number of rows when output is square HALD
+* `-s SIZE` choose your CLUT size or LUT size overriding input value.
+* `-m METHOD` the method of interpolation when resizing between "tetrahedral"(default) and "nearest"
+* `-r ROWS` number of rows when output is square
 * `-ud FLIP` flip upside down RGB values
 
 ## TIPS:
 If you would like to convert your Spark AR LUTs to Lens Studio:
 ```Shell
-$ LUTify.py -i "SparkAR_HALD.png" -o "LensStudio_HALD.png" -s 4 -r 1 -f square --flip
+$ LUTify.py -i "SparkAR_SQUARE.png" -o "LensStudio_SQUARE.png" -s 4 -r 1 -f square --flip
 ```
-
-## TODO LIST:
-- add support for .xmp by Adobe COMING SOON!!
-- avoid scikit-image, and write manually spline interpolation function
-- add support for .3dl
-- cpp (SOON)
-- possible web-version

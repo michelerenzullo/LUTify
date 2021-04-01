@@ -5,27 +5,70 @@ parser = argparse.ArgumentParser(description="Useful script to convert your HALD
 
 parser.add_argument("--input", "-i", help="set input image or CUBE file", type=str, default="")
 parser.add_argument("--output", "-o", help="set output image or CUBE file", type=str, default="")
-parser.add_argument("--format", "-f", help="output: choose type of HALD between \"classic\" and \"square\"" ,choices = ["classic","square"])
+parser.add_argument("--format", "-f", help="output: choose type of HALD between \"hald\" and \"square\"" ,choices = ["hald","square"])
 parser.add_argument("--identity", "-id", help="optional: generate an identity HALD", action="store_true")
 parser.add_argument("--size", "-s", help="optional: override default output size", type=int)
-parser.add_argument("--quality", "-q", help="optional: quality for resize from 0 to 5", choices = range(0,6), type = int, default = 3)
+parser.add_argument("--method", "-m", help="optional: method of interpolation between \"tethraedral\" and \"nearest\"", choices = ["nearest","tetrahedral"], default = "tetrahedral")
 parser.add_argument("--rows", "-r", help="optional: number of rows for square format", type = int, default = 0)
 parser.add_argument("--flip", "-ud", help="optional: flip upside down RGB values", action="store_true")
 
 args = parser.parse_args()
 
-def need_resize(n):
- c = int(n**.5)  
- return not (c**2==n or (c+1)**2==n )
+def nearest(to_resize,size,new_size):
+ resized = np.empty((new_size,new_size,new_size,3), dtype=to_resize.dtype)
+ ratio = float(size - 1.0) / float(new_size - 1.0)
+ for x in range(new_size):
+  for y in range(new_size):
+   for z in range(new_size):
+    lr = sorted((0,int(x*ratio),size-1))[1]
+    ur = sorted((0,lr+1,size-1))[1]
+    lg = sorted((0,int(y*ratio),size-1))[1]
+    ug = sorted((0,lg+1,size-1))[1]
+    lb = sorted((0,int(z*ratio),size-1))[1]
+    ub = sorted((0,lb+1,size-1))[1]
+    r = (lr,ur)[(ur-x*ratio)<(x*ratio-lr)]
+    g = (lg,ug)[(ug-y*ratio)<(y*ratio-lg)]
+    b = (lb,ub)[(ub-z*ratio)<(z*ratio-lb)]
+    resized[x,y,z]=to_resize[r,g,b]
+ return resized
 
-def array_resize(array, size, new_size):
- from skimage.transform import resize
+def tetrahedral(to_resize,size,new_size):
+ resized = np.empty((new_size,new_size,new_size,3), dtype=to_resize.dtype)
+ ratio = float(size - 1.0) / float(new_size - 1.0)
+ for x in range(new_size):
+  for y in range(new_size):
+   for z in range(new_size):
+    lr = sorted((0,int(x*ratio),size-1))[1]
+    ur = sorted((0,lr+1,size-1))[1]
+    lg = sorted((0,int(y*ratio),size-1))[1]
+    ug = sorted((0,lg+1,size-1))[1]
+    lb = sorted((0,int(z*ratio),size-1))[1]
+    ub = sorted((0,lb+1,size-1))[1]
+    fR=x*ratio-lr
+    fG=y*ratio-lg
+    fB=z*ratio-lb
+    if(fG>=fB>=fR):
+     resized[x,y,z]=(1-fG)*to_resize[lr,lg,lb]+(fG-fB)*to_resize[lr,ug,lb]+(fB-fR)*to_resize[lr,ug,ub]+fR*to_resize[ur,ug,ub]
+    elif(fB>fR>fG):
+     resized[x,y,z]=(1-fB)*to_resize[lr,lg,lb]+(fB-fR)*to_resize[lr,lg,ub]+(fR-fG)*to_resize[ur,lg,ub]+fG*to_resize[ur,ug,ub]
+    elif(fB>fG>=fR):
+     resized[x,y,z]=(1-fB)*to_resize[lr,lg,lb]+(fB-fG)*to_resize[lr,lg,ub]+(fG-fR)*to_resize[lr,ug,ub]+fR*to_resize[ur,ug,ub]
+    elif(fR>=fG>fB):
+     resized[x,y,z]=(1-fR)*to_resize[lr,lg,lb]+(fR-fG)*to_resize[ur,lg,lb]+(fG-fB)*to_resize[ur,ug,lb]+fB*to_resize[ur,ug,ub]
+    elif(fG>fR>=fB):
+     resized[x,y,z]=(1-fG)*to_resize[lr,lg,lb]+(fG-fR)*to_resize[lr,ug,lb]+(fR-fB)*to_resize[ur,ug,lb]+fB*to_resize[ur,ug,ub]
+    elif(fR>=fB>=fG):
+     resized[x,y,z]=(1-fR)*to_resize[lr,lg,lb]+(fR-fB)*to_resize[ur,lg,lb]+(fB-fG)*to_resize[ur,lg,ub]+fG*to_resize[ur,ug,ub]  
+ return resized
+
+
+def array_resize(array, size, new_size): 
  if len(array.shape) != 4:
   array = array.reshape(size,size,size,3)  
- return resize(array,(new_size,new_size,new_size,3),order=args.quality)
+ return (nearest(array,size,new_size),tetrahedral(array,size,new_size))[args.method=="tetrahedral"]
 
 def wrapper(standard, array, size):
- if standard == "classic":
+ if standard == "hald":
   array = array.reshape(size**3, size**3, 3)
  else:
   rows = size
@@ -53,8 +96,8 @@ def square_unwrap(array,size):
 
 if args.identity:
  size = (args.size, 8)[not args.size]
- standard = (args.format, "classic")[not args.format]
- Image.fromarray(wrapper(standard, identity(size), size)).save("Identity_HALD_" + standard + ".png")
+ standard = (args.format, "hald")[not args.format]
+ Image.fromarray(wrapper(standard, identity(size), size)).save("Identity_" + standard + ".png")
 
 
 if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args.output.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")):    
@@ -77,7 +120,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
     args.flip = (True,False)[args.flip]
     o_array = np.flipud(o_array)
    if o_array[0,0,1] < o_array[size-1,0,1] > o_array[size,0,1]:   
-    guess_format = "classic"
+    guess_format = "hald"
    else:
     guess_format = "square"
     o_array = square_unwrap(o_array,size)  
@@ -95,10 +138,10 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
   else:      
    to_resize = None
    if args.input.lower().endswith(".cube"):         
-    standard = "classic"
-    to_resize = need_resize(lutSize)
+    standard = "hald"
+    to_resize = not(int(lutSize**.5)**2==lutSize or (int(lutSize**.5) +1)**2==lutSize)
    else:
-    standard = ("square","classic")[guess_format=="square"]
+    standard = ("square","hald")[guess_format=="square"]
 
    if args.format:
     standard = args.format                             
@@ -109,7 +152,7 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
      o_array = array_resize(o_array,lutSize,size**2)
     elif to_resize:
      o_array = array_resize(o_array,lutSize,size**2)
-    
+
    if o_array.dtype == "float64":
     o_array = (o_array*255+.5).astype(np.uint8)
    o_filename = re.search("[^\/|\\\]+$",args.output)[0]
