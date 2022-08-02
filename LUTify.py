@@ -1,9 +1,12 @@
 from PIL import Image
 import numpy as np, argparse, re
 
-parser = argparse.ArgumentParser(description="Useful script to convert your HALD images to CUBE format and viceversa")
+parser = argparse.ArgumentParser(description="Useful script to resize, combine luts, or convert your HALD images to CUBE format and viceversa")
 
 parser.add_argument("--input", "-i", help="set input image or CUBE file", type=str, default="")
+parser.add_argument("--combine", "-c", help="set 2nd lut to combine with input", type=str, default="")
+parser.add_argument("--mixer", "-x", help="optional: mix amount from lut1(0) to lut2(100)", type=int, default=50)
+parser.add_argument("--preserve", "-p", help="optional: preserve max size when combining luts", action="store_true")
 parser.add_argument("--output", "-o", help="set output image or CUBE file", type=str, default="")
 parser.add_argument("--format", "-f", help="output: choose type of HALD between \"hald\" and \"square\"" ,choices = ["hald","square"])
 parser.add_argument("--identity", "-id", help="optional: generate an identity HALD", action="store_true")
@@ -60,8 +63,62 @@ def tetrahedral(to_resize,size,new_size):
     elif(fR>=fB>=fG):
      resized[x,y,z]=(1-fR)*to_resize[lr,lg,lb]+(fR-fB)*to_resize[ur,lg,lb]+(fB-fG)*to_resize[ur,lg,ub]+fG*to_resize[ur,ug,ub]  
  return resized
+ 
+def combine(lut1, lut2, size, mixer):
+ alpha = ((sorted((0.0,mixer/100.0, 1.0))[1] - 0.5) * 2)
+ 
+ #blend lut2 with identity
+ if (alpha < 0):
+  for x in range(size):
+   for y in range(size):
+    for z in range(size):
+     lut2[x,y,z][0] = (1 + alpha) * lut2[x,y,z][0] - alpha * z / (size - 1.0)
+     lut2[x,y,z][1] = (1 + alpha) * lut2[x,y,z][1] - alpha * y / (size - 1.0)
+     lut2[x,y,z][2] = (1 + alpha) * lut2[x,y,z][2] - alpha * x / (size - 1.0)
+                
+ for x in range(size):
+  for y in range(size):
+   for z in range(size):
+    #blend lut1 with identity
+    if (alpha > 0):
+     lut1[x,y,z][0] = (1 - alpha) * lut1[x,y,z][0] + alpha * z / (size - 1.0)
+     lut1[x,y,z][1] = (1 - alpha) * lut1[x,y,z][1] + alpha * y / (size - 1.0)
+     lut1[x,y,z][2] = (1 - alpha) * lut1[x,y,z][2] + alpha * x / (size - 1.0)
+   
+    lr = sorted((0,int(lut1[x,y,z][2]*(size-1)), size-1))[1]
+    ur = sorted((0,lr + 1, size-1))[1]
+    lg = sorted((0,int(lut1[x,y,z][1]*(size-1)), size-1))[1]
+    ug = sorted((0,lg + 1, size-1))[1]
+    lb = sorted((0,int(lut1[x,y,z][0]*(size-1)), size-1))[1]
+    ub = sorted((0,lb + 1, size-1))[1]
+    fR=lut1[x,y,z][2]*(size-1)-lr
+    fG=lut1[x,y,z][1]*(size-1)-lg
+    fB=lut1[x,y,z][0]*(size-1)-lb
+    if(fG>=fB>=fR):
+     lut1[x,y,z]=(1-fG)*lut2[lr,lg,lb]+(fG-fB)*lut2[lr,ug,lb]+(fB-fR)*lut2[lr,ug,ub]+fR*lut2[ur,ug,ub]
+    elif(fB>fR>fG):
+     lut1[x,y,z]=(1-fB)*lut2[lr,lg,lb]+(fB-fR)*lut2[lr,lg,ub]+(fR-fG)*lut2[ur,lg,ub]+fG*lut2[ur,ug,ub]
+    elif(fB>fG>=fR):
+     lut1[x,y,z]=(1-fB)*lut2[lr,lg,lb]+(fB-fG)*lut2[lr,lg,ub]+(fG-fR)*lut2[lr,ug,ub]+fR*lut2[ur,ug,ub]
+    elif(fR>=fG>fB):
+     lut1[x,y,z]=(1-fR)*lut2[lr,lg,lb]+(fR-fG)*lut2[ur,lg,lb]+(fG-fB)*lut2[ur,ug,lb]+fB*lut2[ur,ug,ub]
+    elif(fG>fR>=fB):
+     lut1[x,y,z]=(1-fG)*lut2[lr,lg,lb]+(fG-fR)*lut2[lr,ug,lb]+(fR-fB)*lut2[ur,ug,lb]+fB*lut2[ur,ug,ub]
+    elif(fR>=fB>=fG):
+     lut1[x,y,z]=(1-fR)*lut2[lr,lg,lb]+(fR-fB)*lut2[ur,lg,lb]+(fB-fG)*lut2[ur,lg,ub]+fG*lut2[ur,ug,ub]  
+ return lut1
 
-
+def luts_combine(lut1, lut2, size, mixer):
+ if len(lut1.shape) != 4:
+  lut1 = lut1.reshape(size,size,size,3)
+ if len(lut2.shape) != 4:
+  lut2 = lut2.reshape(size,size,size,3) 
+ if lut1.dtype == "uint8":
+  lut1 = lut1/255
+ if lut2.dtype == "uint8":
+  lut2 = lut2/255
+ combine(lut1,lut2,size,mixer)
+ 
 def array_resize(array, size, new_size): 
  if len(array.shape) != 4:
   array = array.reshape(size,size,size,3)  
@@ -123,8 +180,36 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
     guess_format = "hald"
    else:
     guess_format = "square"
-    o_array = square_unwrap(o_array,size)  
-   
+    o_array = square_unwrap(o_array,size)
+  
+  if args.combine.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")):
+   title2 = re.search("[^\\\/]+(?=\.[\w]+$)",args.combine)[0]
+   if args.combine.lower().endswith(".cube"):
+    file = open(args.combine,'r').read()
+    o_array2 = np.array([i.lower().replace(',', '').split() for i in re.findall("\n[+-]?[0-9]*[.]?[0-9]+\s[+-]?[0-9]*[.]?[0-9]+\s[+-]?[0-9]*[.]?[0-9]+",file)],dtype=float).reshape(-1)
+    lutSize2 = int(re.search("_SIZE.*?(\d+)",file).group(1))
+    input_title2 = re.search("TITLE.?[\"'](.*?)[\"']",file)
+    del file
+    if input_title2:
+     title2 = input_title2.group(1)
+    size2 = int((len(o_array2)/3)**(1/6)+.5)
+   else:
+    o_array2 = np.array(Image.open(args.combine,'r').convert('RGB'), dtype=np.uint8)
+    size2 = int((o_array2.shape[0]*o_array2.shape[1])**(1/6)+.5)
+    lutSize2 = size2**2
+    if o_array2[0,0,1] > o_array2[size-1,0,1]:
+     o_array2 = np.flipud(o_array2)
+    if not o_array2[0,0,1] < o_array2[size-1,0,1] > o_array2[size,0,1]:   
+     o_array2 = square_unwrap(o_array2,size2)
+   if lutSize is not lutSize2:
+    if (bool(lutSize < lutSize2 and args.preserve) ^ bool(lutSize > lutSize2 and not args.preserve)):
+     o_array = array_resize(o_array, lutSize, lutSize2)
+     lutSize = lutSize2
+     size = size2
+    else:
+     o_array2 = array_resize(o_array2, lutSize2, lutSize)
+   luts_combine(o_array, o_array2, lutSize, args.mixer)
+   title = "LUTs combined " + title + " and " + title2
      
   if args.output.lower().endswith(".cube"):   
    if args.size:
@@ -159,4 +244,4 @@ if args.input.lower().endswith((".cube",".png",".jpg",".jpeg",".tiff")) and args
    Image.fromarray(wrapper(standard,o_array,size)).save(args.output[:-len(o_filename)] + standard + "_" + o_filename, quality=100)
    
  except FileNotFoundError:
-  print("Please check input path or output path")
+  print("Please check paths")
